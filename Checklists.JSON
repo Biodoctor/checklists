@@ -1,0 +1,40 @@
+[
+  {
+    "id": "lancamento_foguete",
+    "name": "Checklist de Lançamento de Foguete",
+    "items": [
+      "Verificar sistemas de navegação",
+      "Checar níveis de combustível e oxidante",
+      "Iniciar sequência de ignição do motor principal",
+      "Confirmar comunicação com o controle da missão",
+      "Liberar travas de suporte estrutural",
+      "Ativar sistema de supressão de som",
+      "Lançamento autorizado."
+    ]
+  },
+  {
+    "id": "rotina_matinal_dev",
+    "name": "Rotina Matinal do Desenvolvedor",
+    "items": [
+      "Fazer café",
+      "Revisar e-mails e mensagens da equipe",
+      "Verificar o status dos servidores de produção",
+      "Analisar os tickets de alta prioridade",
+      "Executar 'git pull' no repositório principal",
+      "Iniciar o ambiente de desenvolvimento local",
+      "Começar a codificar a primeira tarefa do dia."
+    ]
+  },
+  {
+    "id": "preparar_viagem",
+    "name": "Preparação para Viagem",
+    "items": [
+      "Confirmar reserva de hotel e voos",
+      "Fazer as malas com roupas e itens essenciais",
+      "Carregar todos os dispositivos eletrônicos",
+      "Separar documentos (passaporte, identidade)",
+      "Avisar o banco sobre a viagem internacional",
+      "Trancar a casa e desligar aparelhos"
+    ]
+  }
+]
