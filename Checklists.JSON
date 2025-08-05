@@ -1,40 +1,399 @@
-[
-  {
-    "id": "lancamento_foguete",
-    "name": "Checklist de Lançamento de Foguete",
-    "items": [
-      "Verificar sistemas de navegação",
-      "Checar níveis de combustível e oxidante",
-      "Iniciar sequência de ignição do motor principal",
-      "Confirmar comunicação com o controle da missão",
-      "Liberar travas de suporte estrutural",
-      "Ativar sistema de supressão de som",
-      "Lançamento autorizado."
-    ]
-  },
-  {
-    "id": "rotina_matinal_dev",
-    "name": "Rotina Matinal do Desenvolvedor",
-    "items": [
-      "Fazer café",
-      "Revisar e-mails e mensagens da equipe",
-      "Verificar o status dos servidores de produção",
-      "Analisar os tickets de alta prioridade",
-      "Executar 'git pull' no repositório principal",
-      "Iniciar o ambiente de desenvolvimento local",
-      "Começar a codificar a primeira tarefa do dia."
-    ]
-  },
-  {
-    "id": "preparar_viagem",
-    "name": "Preparação para Viagem",
-    "items": [
-      "Confirmar reserva de hotel e voos",
-      "Fazer as malas com roupas e itens essenciais",
-      "Carregar todos os dispositivos eletrônicos",
-      "Separar documentos (passaporte, identidade)",
-      "Avisar o banco sobre a viagem internacional",
-      "Trancar a casa e desligar aparelhos"
-    ]
-  }
-]
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplicativo de Checklist com Abas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+        }
+        /* Animação de fade-in para os elementos */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Estilo para a barra de rolagem das abas */
+        .tabs-container::-webkit-scrollbar {
+            height: 4px;
+        }
+        .tabs-container::-webkit-scrollbar-thumb {
+            background-color: #1d4ed8; /* blue-700 */
+            border-radius: 20px;
+        }
+        .tabs-container::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col min-h-screen">
+
+    <header class="bg-gray-800/50 backdrop-blur-sm sticky top-0 z-10 shadow-lg">
+        <div class="container mx-auto p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-bold text-blue-400">Sistema de Checklists</h1>
+            <div class="flex items-center gap-4">
+                <input type="file" id="json-importer" accept=".json" class="hidden">
+                <label for="json-importer" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 text-sm">
+                    Importar JSON
+                </label>
+                <button id="clear-data-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 text-sm">
+                    Limpar Dados
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 md:p-8">
+        <div id="app-container" class="hidden">
+            <!-- Abas com rolagem horizontal -->
+            <div id="tabs-container" class="tabs-container flex items-center border-b border-gray-700 overflow-x-auto pb-2 mb-6">
+                <!-- Abas serão injetadas aqui -->
+            </div>
+
+            <!-- Conteúdo das Abas -->
+            <div id="content-container">
+                <!-- Conteúdo dos checklists será injetado aqui -->
+            </div>
+        </div>
+
+        <div id="welcome-screen" class="text-center">
+             <div class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-lg shadow-2xl shadow-blue-500/10">
+                <h2 class="text-3xl font-bold text-blue-300 mb-4">Bem-vindo!</h2>
+                <p class="text-gray-400 mb-6">Para começar, importe um arquivo JSON com seus checklists ou baixe um modelo para ver como funciona.</p>
+                <button id="download-model-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+                    Baixar Modelo JSON
+                </button>
+             </div>
+        </div>
+    </main>
+
+    <footer class="text-center p-4 text-gray-500 text-sm mt-auto">
+        &copy; 2024 Renato T. Gaspar. Todos os direitos reservados.
+    </footer>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center fade-in">
+            <p id="modal-message" class="text-lg text-gray-200 mb-6"></p>
+            <div class="flex justify-center gap-4">
+                <button id="modal-cancel-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg transition-colors">Cancelar</button>
+                <button id="modal-confirm-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- ELEMENTOS DA UI ---
+            const jsonImporter = document.getElementById('json-importer');
+            const clearDataBtn = document.getElementById('clear-data-btn');
+            const downloadModelBtn = document.getElementById('download-model-btn');
+            const appContainer = document.getElementById('app-container');
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const tabsContainer = document.getElementById('tabs-container');
+            const contentContainer = document.getElementById('content-container');
+            const confirmationModal = document.getElementById('confirmation-modal');
+            const modalMessage = document.getElementById('modal-message');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+            // --- ESTADO DA APLICAÇÃO ---
+            let allChecklists = [];
+            let checklistStates = {};
+            let confirmCallback = null;
+            let debounceTimer;
+
+            // --- FUNÇÕES UTILITÁRIAS ---
+            function debounce(func, delay) {
+                return function(...args) {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => func.apply(this, args), delay);
+                };
+            }
+            const debouncedSave = debounce(saveStates, 500);
+
+            // --- FUNÇÕES DO MODAL ---
+            function showConfirmModal(message, onConfirm) {
+                modalMessage.textContent = message;
+                confirmCallback = onConfirm;
+                confirmationModal.classList.remove('hidden');
+            }
+
+            function hideConfirmModal() {
+                confirmationModal.classList.add('hidden');
+                confirmCallback = null;
+            }
+
+            function handleModalConfirm() {
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback();
+                }
+                hideConfirmModal();
+            }
+
+            // --- FUNÇÕES PRINCIPAIS ---
+            function initialize() {
+                const savedData = localStorage.getItem('checklistData');
+                const savedStates = localStorage.getItem('checklistStates');
+
+                if (savedData) {
+                    try {
+                        allChecklists = JSON.parse(savedData);
+                        checklistStates = savedStates ? JSON.parse(savedStates) : {};
+                        renderUI();
+                        appContainer.classList.remove('hidden');
+                        welcomeScreen.classList.add('hidden');
+                    } catch (e) {
+                        console.error("Erro ao carregar dados:", e);
+                        showConfirmModal("Houve um erro ao carregar seus dados. É recomendado limpar os dados para evitar problemas. Deseja limpar agora?", clearAllData);
+                    }
+                } else {
+                    appContainer.classList.add('hidden');
+                    welcomeScreen.classList.remove('hidden');
+                }
+            }
+
+            function renderUI() {
+                tabsContainer.innerHTML = '';
+                contentContainer.innerHTML = '';
+
+                if (allChecklists.length === 0) {
+                    appContainer.classList.add('hidden');
+                    welcomeScreen.classList.remove('hidden');
+                    return;
+                }
+
+                allChecklists.forEach((list) => {
+                    if (!checklistStates[list.id]) {
+                        checklistStates[list.id] = { currentIndex: 0, note: '' };
+                    } else if (typeof checklistStates[list.id].note === 'undefined') {
+                        checklistStates[list.id].note = '';
+                    }
+                    
+                    const tab = document.createElement('button');
+                    tab.className = 'flex-shrink-0 whitespace-nowrap text-gray-300 py-2 px-4 text-sm md:text-base font-semibold border-b-2 border-transparent hover:bg-gray-700/50 hover:text-blue-300 rounded-t-lg transition-colors';
+                    tab.textContent = list.name;
+                    tab.dataset.targetId = list.id;
+                    tab.onclick = () => switchTab(list.id);
+                    tabsContainer.appendChild(tab);
+
+                    const content = document.createElement('div');
+                    content.id = list.id;
+                    content.className = 'checklist-content hidden';
+                    contentContainer.appendChild(content);
+
+                    renderChecklistContent(list, content);
+                });
+                
+                saveStates();
+                if (allChecklists.length > 0) {
+                    switchTab(allChecklists[0].id);
+                }
+            }
+
+            function renderChecklistContent(list, container) {
+                const state = checklistStates[list.id];
+                container.innerHTML = '';
+
+                const noteHtml = `
+                    <div class="mb-6">
+                        <label for="note-${list.id}" class="block mb-2 text-sm font-bold text-blue-300">Anotações:</label>
+                        <textarea id="note-${list.id}" data-list-id="${list.id}" class="note-textarea w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" rows="3" placeholder="Digite suas anotações aqui...">${state.note || ''}</textarea>
+                    </div>
+                `;
+
+                const completedItemsHtml = list.items.slice(0, state.currentIndex).map(item => 
+                    `<div class="p-3 text-gray-500 line-through opacity-70 fade-in">✓ ${item}</div>`
+                ).join('');
+                
+                let currentItemHtml = '';
+                if (state.currentIndex < list.items.length) {
+                    const currentItem = list.items[state.currentIndex];
+                    currentItemHtml = `
+                        <div class="bg-gray-800 p-6 rounded-lg border-2 border-blue-500 shadow-lg fade-in">
+                            <p class="text-xl text-blue-300 mb-6">${currentItem}</p>
+                            <button data-list-id="${list.id}" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 text-lg complete-btn">
+                                Tarefa Executada
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    currentItemHtml = `
+                        <div class="text-center p-8 bg-green-900/50 rounded-lg fade-in">
+                            <h3 class="text-2xl font-bold text-green-400">Checklist Concluído!</h3>
+                            <p class="text-gray-300 mt-2">Todas as tarefas foram executadas com sucesso.</p>
+                        </div>
+                    `;
+                }
+
+                const controlsHtml = `
+                    <div class="flex justify-center items-center gap-4 mt-8">
+                        <button data-list-id="${list.id}" class="w-full sm:w-auto bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300 restart-btn">
+                            Reiniciar
+                        </button>
+                    </div>
+                `;
+
+                container.innerHTML = `
+                    <div class="max-w-3xl mx-auto bg-gray-800/50 p-6 rounded-lg">
+                        ${noteHtml}
+                        <div class="border-t-2 border-gray-700 pt-4">
+                            <div class="border-b-2 border-gray-700 pb-4 mb-6">${completedItemsHtml}</div>
+                            <div>${currentItemHtml}</div>
+                            ${controlsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            function switchTab(targetId) {
+                tabsContainer.querySelectorAll('button').forEach(tab => {
+                    tab.classList.toggle('border-blue-500', tab.dataset.targetId === targetId);
+                    tab.classList.toggle('text-white', tab.dataset.targetId === targetId);
+                    tab.classList.toggle('border-transparent', tab.dataset.targetId !== targetId);
+                    tab.classList.toggle('text-gray-300', tab.dataset.targetId !== targetId);
+                });
+                contentContainer.querySelectorAll('.checklist-content').forEach(content => {
+                    content.classList.toggle('hidden', content.id !== targetId);
+                });
+            }
+
+            // --- MANIPULADORES DE EVENTOS ---
+            function handleFileImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (Array.isArray(data) && data.every(item => item.id && item.name && Array.isArray(item.items))) {
+                            allChecklists = data;
+                            checklistStates = {};
+                            localStorage.setItem('checklistData', JSON.stringify(allChecklists));
+                            initialize();
+                        } else {
+                            alert('Formato do arquivo JSON inválido.');
+                        }
+                    } catch (error) {
+                        alert('Erro ao ler o arquivo JSON.');
+                        console.error("Erro no parse do JSON:", error);
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            }
+
+            function handleContentClick(event) {
+                const target = event.target;
+                const listId = target.dataset.listId;
+                if (!listId) return;
+
+                if (target.classList.contains('complete-btn')) {
+                    checklistStates[listId].currentIndex++;
+                    saveStates();
+                    const list = allChecklists.find(l => l.id === listId);
+                    const contentPane = document.getElementById(listId);
+                    if(list && contentPane) renderChecklistContent(list, contentPane);
+                }
+
+                if (target.classList.contains('restart-btn')) {
+                    showConfirmModal('Tem certeza que deseja reiniciar este checklist? Todo o progresso e as anotações serão apagados.', () => {
+                        checklistStates[listId].currentIndex = 0;
+                        checklistStates[listId].note = '';
+                        saveStates();
+                        const list = allChecklists.find(l => l.id === listId);
+                        const contentPane = document.getElementById(listId);
+                        if(list && contentPane) renderChecklistContent(list, contentPane);
+                    });
+                }
+            }
+
+            function handleContentInput(event) {
+                const target = event.target;
+                if (target.classList.contains('note-textarea')) {
+                    const listId = target.dataset.listId;
+                    if (listId && checklistStates[listId]) {
+                        checklistStates[listId].note = target.value;
+                        debouncedSave();
+                    }
+                }
+            }
+            
+            function handleDownloadModel() {
+                const modelData = [
+                  {
+                    "id": "lancamento_foguete",
+                    "name": "Lançamento de Foguete",
+                    "items": [
+                      "Verificar sistemas de navegação",
+                      "Checar níveis de combustível e oxidante",
+                      "Iniciar sequência de ignição",
+                      "Confirmar comunicação com controle",
+                      "Liberar travas de suporte",
+                      "Lançamento autorizado"
+                    ]
+                  },
+                  {
+                    "id": "rotina_matinal_dev",
+                    "name": "Rotina Matinal Dev",
+                    "items": [
+                      "Fazer café",
+                      "Revisar e-mails e mensagens",
+                      "Verificar status dos servidores",
+                      "Analisar tickets de prioridade",
+                      "Executar 'git pull'",
+                      "Iniciar ambiente de dev",
+                      "Começar a codificar"
+                    ]
+                  }
+                ];
+                const jsonString = JSON.stringify(modelData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'modelo-checklist.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function clearAllData() {
+                localStorage.removeItem('checklistData');
+                localStorage.removeItem('checklistStates');
+                allChecklists = [];
+                checklistStates = {};
+                initialize();
+            }
+            
+            function handleClearData() {
+                showConfirmModal('ATENÇÃO: Isso removerá todos os checklists e seu progresso. Deseja continuar?', clearAllData);
+            }
+
+            function saveStates() {
+                localStorage.setItem('checklistStates', JSON.stringify(checklistStates));
+            }
+
+            // --- ATRIBUINDO EVENTOS ---
+            jsonImporter.addEventListener('change', handleFileImport);
+            clearDataBtn.addEventListener('click', handleClearData);
+            downloadModelBtn.addEventListener('click', handleDownloadModel);
+            contentContainer.addEventListener('click', handleContentClick);
+            contentContainer.addEventListener('input', handleContentInput);
+            modalConfirmBtn.addEventListener('click', handleModalConfirm);
+            modalCancelBtn.addEventListener('click', hideConfirmModal);
+
+            // Inicia a aplicação
+            initialize();
+        });
+    </script>
+</body>
+</html>
